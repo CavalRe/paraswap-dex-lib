@@ -6,6 +6,7 @@ import { StatefulEventSubscriber } from '../../stateful-event-subscriber';
 import { IDexHelper } from '../../dex-helper/idex-helper';
 import { PoolState } from './types';
 
+const ONE = BigInt(10 ** 18);
 export class CavalreMultiswapEventPool extends StatefulEventSubscriber<PoolState> {
   handlers: {
     [event: string]: (
@@ -77,7 +78,19 @@ export class CavalreMultiswapEventPool extends StatefulEventSubscriber<PoolState
    */
   async generateState(blockNumber: number): Promise<DeepReadonly<PoolState>> {
     // TODO: complete me!
-    return {};
+    return {
+      address: '',
+      name: '',
+      symbol: '',
+      decimals: 18,
+      balance: ONE,
+      scale: ONE,
+      conversion: ONE,
+      fee: 0n,
+      weight: ONE,
+      omega: ONE,
+      assets: {},
+    };
   }
 
   // Its just a dummy example
