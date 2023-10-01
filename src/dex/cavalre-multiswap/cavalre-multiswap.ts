@@ -28,9 +28,7 @@ export class CavalReMultiswap
   protected eventPools: CavalReMultiswapEventPool;
 
   readonly hasConstantPriceLargeAmounts = false;
-  // TODO: set true here if protocols works only with wrapped asset
   readonly needWrapNative = true;
-
   readonly isFeeOnTransferSupported = false;
 
   public static dexKeysWithNetwork: { key: string; networks: Network[] }[] =
@@ -78,7 +76,6 @@ export class CavalReMultiswap
     side: SwapSide,
     blockNumber: number,
   ): Promise<string[]> {
-    // TODO: complete me!
     return ['CavalReMultiswap_0x5f1e8eD8468232Bab71EDa9F4598bDa3161F48eA'];
   }
 
@@ -102,7 +99,6 @@ export class CavalReMultiswap
   getCalldataGasCost(
     poolPrices: PoolPrices<CavalReMultiswapData>,
   ): number | number[] {
-    // TODO: update if there is any payload in getAdapterParam
     return CALLDATA_GAS_COST.DEX_NO_PAYLOAD;
   }
 
@@ -117,10 +113,7 @@ export class CavalReMultiswap
     data: CavalReMultiswapData,
     side: SwapSide,
   ): AdapterExchangeParam {
-    // TODO: complete me!
     const { exchange } = data;
-
-    // Encode here the payload for adapter
     const payload = '';
 
     return {
@@ -146,7 +139,12 @@ export class CavalReMultiswap
     const { exchange } = data;
 
     // Encode here the transaction arguments
-    const swapData = '';
+    const swapData = CavalReMultiswap.poolInterface.encodeFunctionData('swap', [
+      srcToken,
+      destToken,
+      srcAmount,
+      0n,
+    ]);
 
     return this.buildSimpleParamWithoutWETHConversion(
       srcToken,
