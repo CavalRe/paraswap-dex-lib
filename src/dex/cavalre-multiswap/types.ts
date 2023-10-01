@@ -3,26 +3,27 @@ import { Address } from '../../types';
 export type Dict<T> = {
   [key: string]: T;
 };
-export type Token = {
-  address: string;
+
+export type TokenState = {
+  address: Address;
   name: string;
   symbol: string;
   decimals: number;
+  conversion: bigint; // Used to convert decimals
   balance: bigint; // Token reserves
   fee: bigint;
   scale: bigint; // Used to compute weight
   weight: bigint;
-  conversion: bigint; // Used to convert decimals
-  omega?: bigint; // Used for geometric mean
 };
-export interface Pool extends Token {
-  omega: bigint;
-  assets: Dict<Token>;
+
+export type AssetStates = {
+  [address: Address]: TokenState;
+};
+
+export interface PoolState extends TokenState {
+  assets: AssetStates;
+  addresses: Address[];
 }
-export type PoolState = Token & {
-  omega: bigint;
-  assets: Dict<Token>;
-};
 
 export type CavalreMultiswapData = {
   // TODO: CavalreMultiswapData is the dex data that is

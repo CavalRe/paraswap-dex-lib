@@ -88,8 +88,8 @@ export class CavalreMultiswapEventPool extends StatefulEventSubscriber<PoolState
       conversion: ONE,
       fee: 0n,
       weight: ONE,
-      omega: ONE,
       assets: {},
+      addresses: [],
     };
   }
 
