@@ -16,7 +16,7 @@ import { generateConfig } from '../../config';
   README
   ======
 
-  This test script should add e2e tests for CavalreMultiswap. The tests
+  This test script should add e2e tests for CavalReMultiswap. The tests
   should cover as many cases as possible. Most of the DEXes follow
   the following test structure:
     - DexName
@@ -29,13 +29,13 @@ import { generateConfig } from '../../config';
   The template already enumerates the basic structure which involves
   testing simpleSwap, multiSwap, megaSwap contract methods for
   ETH <> TOKEN and TOKEN <> TOKEN swaps. You should replace tokenA and
-  tokenB with any two highly liquid tokens on CavalreMultiswap for the tests
+  tokenB with any two highly liquid tokens on CavalReMultiswap for the tests
   to work. If the tokens that you would like to use are not defined in
   Tokens or Holders map, you can update the './tests/constants-e2e'
 
   Other than the standard cases that are already added by the template
   it is highly recommended to add test cases which could be specific
-  to testing CavalreMultiswap (Eg. Tests based on poolType, special tokens,
+  to testing CavalReMultiswap (Eg. Tests based on poolType, special tokens,
   etc).
 
   You can run this individual test script by running:
@@ -133,8 +133,8 @@ function testForNetwork(
   });
 }
 
-describe('CavalreMultiswap E2E', () => {
-  const dexKey = 'CavalreMultiswap';
+describe('CavalReMultiswap E2E', () => {
+  const dexKey = 'CavalReMultiswap';
 
   describe('Mainnet', () => {
     const network = Network.MAINNET;
@@ -157,6 +157,6 @@ describe('CavalreMultiswap E2E', () => {
       nativeTokenAmount,
     );
 
-    // TODO: Add any additional test cases required to test CavalreMultiswap
+    // TODO: Add any additional test cases required to test CavalReMultiswap
   });
 });

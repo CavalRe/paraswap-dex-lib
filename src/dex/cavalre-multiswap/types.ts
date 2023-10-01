@@ -25,8 +25,8 @@ export interface PoolState extends TokenState {
   addresses: Address[];
 }
 
-export type CavalreMultiswapData = {
-  // TODO: CavalreMultiswapData is the dex data that is
+export type CavalReMultiswapData = {
+  // TODO: CavalReMultiswapData is the dex data that is
   // returned by the API that can be used for
   // tx building. The data structure should be minimal.
   // Complete me!
@@ -34,7 +34,8 @@ export type CavalreMultiswapData = {
 };
 
 export type DexParams = {
-  // TODO: DexParams is set of parameters the can
-  // be used to initiate a DEX fork.
-  // Complete me!
+  pools: {
+    address: Address;
+    name: string;
+  }[];
 };

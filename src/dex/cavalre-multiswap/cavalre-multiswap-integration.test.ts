@@ -6,7 +6,7 @@ import { Interface, Result } from '@ethersproject/abi';
 import { DummyDexHelper } from '../../dex-helper/index';
 import { Network, SwapSide } from '../../constants';
 import { BI_POWS } from '../../bigint-constants';
-import { CavalreMultiswap } from './cavalre-multiswap';
+import { CavalReMultiswap } from './cavalre-multiswap';
 import {
   checkPoolPrices,
   checkPoolsLiquidity,
@@ -18,9 +18,9 @@ import { Tokens } from '../../../tests/constants-e2e';
   README
   ======
 
-  This test script adds tests for CavalreMultiswap general integration
+  This test script adds tests for CavalReMultiswap general integration
   with the DEX interface. The test cases below are example tests.
-  It is recommended to add tests which cover CavalreMultiswap specific
+  It is recommended to add tests which cover CavalReMultiswap specific
   logic.
 
   You can run this individual test script by running:
@@ -58,7 +58,7 @@ function decodeReaderResult(
 }
 
 async function checkOnChainPricing(
-  cavalreMultiswap: CavalreMultiswap,
+  cavalreMultiswap: CavalReMultiswap,
   funcName: string,
   blockNumber: number,
   prices: bigint[],
@@ -91,7 +91,7 @@ async function checkOnChainPricing(
 }
 
 async function testPricingOnNetwork(
-  cavalreMultiswap: CavalreMultiswap,
+  cavalreMultiswap: CavalReMultiswap,
   network: Network,
   dexKey: string,
   blockNumber: number,
@@ -146,10 +146,10 @@ async function testPricingOnNetwork(
   );
 }
 
-describe('CavalreMultiswap', function () {
-  const dexKey = 'CavalreMultiswap';
+describe('CavalReMultiswap', function () {
+  const dexKey = 'CavalReMultiswap';
   let blockNumber: number;
-  let cavalreMultiswap: CavalreMultiswap;
+  let cavalreMultiswap: CavalReMultiswap;
 
   describe('Mainnet', () => {
     const network = Network.MAINNET;
@@ -192,7 +192,7 @@ describe('CavalreMultiswap', function () {
 
     beforeAll(async () => {
       blockNumber = await dexHelper.web3Provider.eth.getBlockNumber();
-      cavalreMultiswap = new CavalreMultiswap(network, dexKey, dexHelper);
+      cavalreMultiswap = new CavalReMultiswap(network, dexKey, dexHelper);
       if (cavalreMultiswap.initializePricing) {
         await cavalreMultiswap.initializePricing(blockNumber);
       }
@@ -229,21 +229,21 @@ describe('CavalreMultiswap', function () {
     it('getTopPoolsForToken', async function () {
       // We have to check without calling initializePricing, because
       // pool-tracker is not calling that function
-      const newCavalreMultiswap = new CavalreMultiswap(
+      const newCavalReMultiswap = new CavalReMultiswap(
         network,
         dexKey,
         dexHelper,
       );
-      if (newCavalreMultiswap.updatePoolState) {
-        await newCavalreMultiswap.updatePoolState();
+      if (newCavalReMultiswap.updatePoolState) {
+        await newCavalReMultiswap.updatePoolState();
       }
-      const poolLiquidity = await newCavalreMultiswap.getTopPoolsForToken(
+      const poolLiquidity = await newCavalReMultiswap.getTopPoolsForToken(
         tokens[srcTokenSymbol].address,
         10,
       );
       console.log(`${srcTokenSymbol} Top Pools:`, poolLiquidity);
 
-      if (!newCavalreMultiswap.hasConstantPriceLargeAmounts) {
+      if (!newCavalReMultiswap.hasConstantPriceLargeAmounts) {
         checkPoolsLiquidity(
           poolLiquidity,
           Tokens[network][srcTokenSymbol].address,

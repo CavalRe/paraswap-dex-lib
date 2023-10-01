@@ -7,7 +7,7 @@ import { IDexHelper } from '../../dex-helper/idex-helper';
 import { PoolState } from './types';
 
 const ONE = BigInt(10 ** 18);
-export class CavalreMultiswapEventPool extends StatefulEventSubscriber<PoolState> {
+export class CavalReMultiswapEventPool extends StatefulEventSubscriber<PoolState> {
   handlers: {
     [event: string]: (
       event: any,
