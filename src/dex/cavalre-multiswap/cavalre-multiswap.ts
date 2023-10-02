@@ -74,9 +74,16 @@ export class CavalReMultiswap
   }
 
   getPoolsWithTokenPair(srcToken: Token, destToken: Token): Address[] {
-    // WIP: Rethinking this
-    const pools = getDexKeysWithNetwork(CavalReMultiswapConfig);
-    return [this.poolAddress];
+    const poolStateMap = this.eventPools.pools;
+    const pools = Object.values(poolStateMap)
+      .filter(poolState => {
+        return (
+          !!poolState.assets[srcToken.address.toLowerCase() as Address] &&
+          !!poolState.assets[destToken.address.toLowerCase() as Address]
+        );
+      })
+      .map(pool => pool.address) as Address[];
+    return pools;
   }
 
   // Returns list of pool identifiers that can be used
@@ -89,8 +96,8 @@ export class CavalReMultiswap
     side: SwapSide,
     blockNumber: number,
   ): Promise<string[]> {
-    const pools = getDexKeysWithNetwork(CavalReMultiswapConfig);
-    return ['CavalReMultiswap_0x5f1e8eD8468232Bab71EDa9F4598bDa3161F48eA'];
+    const pools = this.getPoolsWithTokenPair(srcToken, destToken);
+    return pools.map(address => `${this.dexKey}_${address}`);
   }
 
   // Returns pool prices for amounts.
