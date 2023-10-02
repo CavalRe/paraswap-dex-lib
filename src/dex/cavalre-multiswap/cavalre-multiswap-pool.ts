@@ -5,6 +5,7 @@ import { catchParseLogError } from '../../utils';
 import { StatefulEventSubscriber } from '../../stateful-event-subscriber';
 import { IDexHelper } from '../../dex-helper/idex-helper';
 import { PoolState } from './types';
+import { Address } from '../../types';
 
 const ONE = BigInt(10 ** 18);
 export class CavalReMultiswapEventPool extends StatefulEventSubscriber<PoolState> {
@@ -23,6 +24,7 @@ export class CavalReMultiswapEventPool extends StatefulEventSubscriber<PoolState
   constructor(
     readonly parentName: string,
     protected network: number,
+    public poolAddress: Address,
     protected dexHelper: IDexHelper,
     logger: Logger,
     protected cavalreMultiswapIface = new Interface(

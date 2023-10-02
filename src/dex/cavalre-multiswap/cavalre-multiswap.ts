@@ -24,12 +24,13 @@ export class CavalReMultiswap
   extends SimpleExchange
   implements IDex<CavalReMultiswapData>
 {
-  static readonly poolInterface = new Interface(PoolABI);
   protected eventPools: CavalReMultiswapEventPool;
 
   readonly hasConstantPriceLargeAmounts = false;
   readonly needWrapNative = true;
   readonly isFeeOnTransferSupported = false;
+
+  static readonly poolInterface = new Interface(PoolABI);
 
   public static dexKeysWithNetwork: { key: string; networks: Network[] }[] =
     getDexKeysWithNetwork(CavalReMultiswapConfig);
@@ -40,6 +41,7 @@ export class CavalReMultiswap
     readonly network: Network,
     readonly dexKey: string,
     readonly dexHelper: IDexHelper,
+    public poolAddress: Address,
     protected adapters = Adapters[network] || {}, // TODO: add any additional optional params to support other fork DEXes
   ) {
     super(dexHelper, dexKey);
@@ -47,9 +49,14 @@ export class CavalReMultiswap
     this.eventPools = new CavalReMultiswapEventPool(
       dexKey,
       network,
+      poolAddress,
       dexHelper,
       this.logger,
     );
+  }
+
+  async setupEventPools(blockNumber: number) {
+    await this.eventPools.initialize(blockNumber);
   }
 
   // Initialize pricing is called once in the start of
@@ -57,7 +64,7 @@ export class CavalReMultiswap
   // for pricing requests. It is optional for a DEX to
   // implement this function
   async initializePricing(blockNumber: number) {
-    // TODO: complete me!
+    await this.setupEventPools(blockNumber);
   }
 
   // Returns the list of contract adapters (name and index)

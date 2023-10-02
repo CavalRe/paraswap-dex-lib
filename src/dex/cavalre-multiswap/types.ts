@@ -16,14 +16,18 @@ export type TokenState = {
   weight: bigint;
 };
 
-export type AssetStates = {
+export type AssetStateMap = {
   [address: Address]: TokenState;
 };
 
 export interface PoolState extends TokenState {
-  assets: AssetStates;
+  assets: AssetStateMap;
   addresses: Address[];
 }
+
+export type PoolStateMap = {
+  [address: Address]: PoolState;
+};
 
 export type CavalReMultiswapData = {
   // TODO: CavalReMultiswapData is the dex data that is
