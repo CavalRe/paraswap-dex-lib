@@ -2,7 +2,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { CavalreMultiswapEventPool } from './cavalre-multiswap-pool';
+import { CavalReMultiswapEventPool } from './cavalre-multiswap-pool';
 import { Network } from '../../constants';
 import { Address } from '../../types';
 import { DummyDexHelper } from '../../dex-helper/index';
@@ -13,7 +13,7 @@ import { PoolState } from './types';
   README
   ======
 
-  This test script adds unit tests for CavalreMultiswap event based
+  This test script adds unit tests for CavalReMultiswap event based
   system. This is done by fetching the state on-chain before the
   event block, manually pushing the block logs to the event-subscriber,
   comparing the local state with on-chain state.
@@ -45,7 +45,7 @@ import { PoolState } from './types';
 jest.setTimeout(50 * 1000);
 
 async function fetchPoolState(
-  cavalreMultiswapPools: CavalreMultiswapEventPool,
+  cavalreMultiswapPools: CavalReMultiswapEventPool,
   blockNumber: number,
   poolAddress: string,
 ): Promise<PoolState> {
@@ -56,12 +56,12 @@ async function fetchPoolState(
 // eventName -> blockNumbers
 type EventMappings = Record<string, number[]>;
 
-describe('CavalreMultiswap EventPool Mainnet', function () {
-  const dexKey = 'CavalreMultiswap';
+describe('CavalReMultiswap EventPool Mainnet', function () {
+  const dexKey = 'CavalReMultiswap';
   const network = Network.MAINNET;
   const dexHelper = new DummyDexHelper(network);
   const logger = dexHelper.getLogger(dexKey);
-  let cavalreMultiswapPool: CavalreMultiswapEventPool;
+  let cavalreMultiswapPool: CavalReMultiswapEventPool;
 
   // poolAddress -> EventMappings
   const eventsToTest: Record<Address, EventMappings> = {
@@ -69,7 +69,7 @@ describe('CavalreMultiswap EventPool Mainnet', function () {
   };
 
   beforeEach(async () => {
-    cavalreMultiswapPool = new CavalreMultiswapEventPool(
+    cavalreMultiswapPool = new CavalReMultiswapEventPool(
       dexKey,
       network,
       dexHelper,

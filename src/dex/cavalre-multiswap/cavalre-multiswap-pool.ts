@@ -4,10 +4,11 @@ import { Log, Logger } from '../../types';
 import { catchParseLogError } from '../../utils';
 import { StatefulEventSubscriber } from '../../stateful-event-subscriber';
 import { IDexHelper } from '../../dex-helper/idex-helper';
-import { PoolState } from './types';
+import { PoolState, PoolStateMap } from './types';
+import { Address } from '../../types';
 
 const ONE = BigInt(10 ** 18);
-export class CavalreMultiswapEventPool extends StatefulEventSubscriber<PoolState> {
+export class CavalReMultiswapEventPool extends StatefulEventSubscriber<PoolState> {
   handlers: {
     [event: string]: (
       event: any,
@@ -16,6 +17,8 @@ export class CavalreMultiswapEventPool extends StatefulEventSubscriber<PoolState
     ) => DeepReadonly<PoolState> | null;
   } = {};
 
+  pools: PoolStateMap = {};
+
   logDecoder: (log: Log) => any;
 
   addressesSubscribed: string[];
@@ -23,6 +26,7 @@ export class CavalreMultiswapEventPool extends StatefulEventSubscriber<PoolState
   constructor(
     readonly parentName: string,
     protected network: number,
+    public poolAddress: Address,
     protected dexHelper: IDexHelper,
     logger: Logger,
     protected cavalreMultiswapIface = new Interface(
@@ -67,6 +71,11 @@ export class CavalreMultiswapEventPool extends StatefulEventSubscriber<PoolState
     return null;
   }
 
+  async fetchPools(): Promise<PoolStateMap> {
+    // Fetch pools from network
+    return {};
+  }
+
   /**
    * The function generates state using on-chain calls. This
    * function is called to regenerate state if the event based
@@ -77,20 +86,10 @@ export class CavalreMultiswapEventPool extends StatefulEventSubscriber<PoolState
    * @returns state of the event subscriber at blocknumber
    */
   async generateState(blockNumber: number): Promise<DeepReadonly<PoolState>> {
-    // TODO: complete me!
-    return {
-      address: '',
-      name: '',
-      symbol: '',
-      decimals: 18,
-      balance: ONE,
-      scale: ONE,
-      conversion: ONE,
-      fee: 0n,
-      weight: ONE,
-      omega: ONE,
-      assets: {},
-    };
+    const pools = await this.fetchPools();
+    this.pools = pools;
+    const poolState = pools[this.poolAddress.toLowerCase() as Address];
+    return poolState;
   }
 
   // Its just a dummy example

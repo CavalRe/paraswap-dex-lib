@@ -1,15 +1,13 @@
 import { DexParams } from './types';
 import { DexConfigMap, AdapterMappings } from '../../types';
-import { Network, SwapSide } from '../../constants';
+import { Network } from '../../constants';
 
-export const CavalreMultiswapConfig: DexConfigMap<DexParams> = {
-  CavalreMultiswap: {
-    // TODO: complete me!
+export const CavalReMultiswapConfig: DexConfigMap<DexParams> = {
+  CavalReMultiswap: {
+    [Network.AVALANCHE]: {
+      pools: {},
+    },
   },
 };
 
-export const Adapters: Record<number, AdapterMappings> = {
-  // TODO: add adapters for each chain
-  // This is an example to copy
-  [Network.MAINNET]: { [SwapSide.SELL]: [{ name: '', index: 0 }] },
-};
+export const Adapters: Record<number, AdapterMappings> = {};

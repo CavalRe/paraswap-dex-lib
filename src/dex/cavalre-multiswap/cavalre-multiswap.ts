@@ -1,4 +1,4 @@
-import { AsyncOrSync } from 'ts-essentials';
+import { Interface } from '@ethersproject/abi';
 import {
   Token,
   Address,
@@ -14,25 +14,26 @@ import * as CALLDATA_GAS_COST from '../../calldata-gas-cost';
 import { getDexKeysWithNetwork } from '../../utils';
 import { IDex } from '../../dex/idex';
 import { IDexHelper } from '../../dex-helper/idex-helper';
-import { CavalreMultiswapData } from './types';
+import { CavalReMultiswapData } from './types';
 import { SimpleExchange } from '../simple-exchange';
-import { CavalreMultiswapConfig, Adapters } from './config';
-import { CavalreMultiswapEventPool } from './cavalre-multiswap-pool';
+import { CavalReMultiswapConfig, Adapters } from './config';
+import { CavalReMultiswapEventPool } from './cavalre-multiswap-pool';
+import PoolABI from '../../abi/cavalre-multiswap/cavalre-multiswap-beta.json';
 
-export class CavalreMultiswap
+export class CavalReMultiswap
   extends SimpleExchange
-  implements IDex<CavalreMultiswapData>
+  implements IDex<CavalReMultiswapData>
 {
-  protected eventPools: CavalreMultiswapEventPool;
+  protected eventPools: CavalReMultiswapEventPool;
 
   readonly hasConstantPriceLargeAmounts = false;
-  // TODO: set true here if protocols works only with wrapped asset
   readonly needWrapNative = true;
-
   readonly isFeeOnTransferSupported = false;
 
+  static readonly poolInterface = new Interface(PoolABI);
+
   public static dexKeysWithNetwork: { key: string; networks: Network[] }[] =
-    getDexKeysWithNetwork(CavalreMultiswapConfig);
+    getDexKeysWithNetwork(CavalReMultiswapConfig);
 
   logger: Logger;
 
@@ -40,16 +41,22 @@ export class CavalreMultiswap
     readonly network: Network,
     readonly dexKey: string,
     readonly dexHelper: IDexHelper,
+    public poolAddress: Address,
     protected adapters = Adapters[network] || {}, // TODO: add any additional optional params to support other fork DEXes
   ) {
     super(dexHelper, dexKey);
     this.logger = dexHelper.getLogger(dexKey);
-    this.eventPools = new CavalreMultiswapEventPool(
+    this.eventPools = new CavalReMultiswapEventPool(
       dexKey,
       network,
+      poolAddress,
       dexHelper,
       this.logger,
     );
+  }
+
+  async setupEventPools(blockNumber: number) {
+    await this.eventPools.initialize(blockNumber);
   }
 
   // Initialize pricing is called once in the start of
@@ -57,13 +64,19 @@ export class CavalreMultiswap
   // for pricing requests. It is optional for a DEX to
   // implement this function
   async initializePricing(blockNumber: number) {
-    // TODO: complete me!
+    await this.setupEventPools(blockNumber);
   }
 
   // Returns the list of contract adapters (name and index)
   // for a buy/sell. Return null if there are no adapters.
   getAdapters(side: SwapSide): { name: string; index: number }[] | null {
     return this.adapters[side] ? this.adapters[side] : null;
+  }
+
+  getPoolsWithTokenPair(srcToken: Token, destToken: Token): Address[] {
+    // WIP: Rethinking this
+    const pools = getDexKeysWithNetwork(CavalReMultiswapConfig);
+    return [this.poolAddress];
   }
 
   // Returns list of pool identifiers that can be used
@@ -76,8 +89,8 @@ export class CavalreMultiswap
     side: SwapSide,
     blockNumber: number,
   ): Promise<string[]> {
-    // TODO: complete me!
-    return [];
+    const pools = getDexKeysWithNetwork(CavalReMultiswapConfig);
+    return ['CavalReMultiswap_0x5f1e8eD8468232Bab71EDa9F4598bDa3161F48eA'];
   }
 
   // Returns pool prices for amounts.
@@ -91,16 +104,15 @@ export class CavalreMultiswap
     side: SwapSide,
     blockNumber: number,
     limitPools?: string[],
-  ): Promise<null | ExchangePrices<CavalreMultiswapData>> {
+  ): Promise<null | ExchangePrices<CavalReMultiswapData>> {
     // TODO: complete me!
     return null;
   }
 
   // Returns estimated gas cost of calldata for this DEX in multiSwap
   getCalldataGasCost(
-    poolPrices: PoolPrices<CavalreMultiswapData>,
+    poolPrices: PoolPrices<CavalReMultiswapData>,
   ): number | number[] {
-    // TODO: update if there is any payload in getAdapterParam
     return CALLDATA_GAS_COST.DEX_NO_PAYLOAD;
   }
 
@@ -112,13 +124,10 @@ export class CavalreMultiswap
     destToken: string,
     srcAmount: string,
     destAmount: string,
-    data: CavalreMultiswapData,
+    data: CavalReMultiswapData,
     side: SwapSide,
   ): AdapterExchangeParam {
-    // TODO: complete me!
     const { exchange } = data;
-
-    // Encode here the payload for adapter
     const payload = '';
 
     return {
@@ -137,14 +146,19 @@ export class CavalreMultiswap
     destToken: string,
     srcAmount: string,
     destAmount: string,
-    data: CavalreMultiswapData,
+    data: CavalReMultiswapData,
     side: SwapSide,
   ): Promise<SimpleExchangeParam> {
     // TODO: complete me!
     const { exchange } = data;
 
     // Encode here the transaction arguments
-    const swapData = '';
+    const swapData = CavalReMultiswap.poolInterface.encodeFunctionData('swap', [
+      srcToken,
+      destToken,
+      srcAmount,
+      0n,
+    ]);
 
     return this.buildSimpleParamWithoutWETHConversion(
       srcToken,
@@ -173,11 +187,5 @@ export class CavalreMultiswap
   ): Promise<PoolLiquidity[]> {
     //TODO: complete me!
     return [];
-  }
-
-  // This is optional function in case if your implementation has acquired any resources
-  // you need to release for graceful shutdown. For example, it may be any interval timer
-  releaseResources(): AsyncOrSync<void> {
-    // TODO: complete me!
   }
 }
