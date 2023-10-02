@@ -82,7 +82,7 @@ export class CavalReMultiswap
           !!poolState.assets[destToken.address.toLowerCase() as Address]
         );
       })
-      .map(pool => pool.address) as Address[];
+      .map(poolState => poolState.address) as Address[];
     return pools;
   }
 
