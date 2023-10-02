@@ -38,8 +38,5 @@ export type CavalReMultiswapData = {
 };
 
 export type DexParams = {
-  pools: {
-    address: Address;
-    name: string;
-  }[];
+  pools: PoolStateMap;
 };
