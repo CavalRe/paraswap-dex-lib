@@ -73,6 +73,12 @@ export class CavalReMultiswap
     return this.adapters[side] ? this.adapters[side] : null;
   }
 
+  getPoolsWithTokenPair(srcToken: Token, destToken: Token): Address[] {
+    // WIP: Rethinking this
+    const pools = getDexKeysWithNetwork(CavalReMultiswapConfig);
+    return [this.poolAddress];
+  }
+
   // Returns list of pool identifiers that can be used
   // for a given swap. poolIdentifiers must be unique
   // across DEXes. It is recommended to use
@@ -83,6 +89,7 @@ export class CavalReMultiswap
     side: SwapSide,
     blockNumber: number,
   ): Promise<string[]> {
+    const pools = getDexKeysWithNetwork(CavalReMultiswapConfig);
     return ['CavalReMultiswap_0x5f1e8eD8468232Bab71EDa9F4598bDa3161F48eA'];
   }
 
