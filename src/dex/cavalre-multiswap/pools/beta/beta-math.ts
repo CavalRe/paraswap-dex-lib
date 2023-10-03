@@ -1,13 +1,23 @@
-import {
-  PoolState,
-  MultiswapQuoteInputs,
-  MultiswapQuoteResult,
-} from '../../types';
+import { PoolState } from '../../types';
+
+export type MultiswapBetaQuoteInputs = {
+  payTokens: string[];
+  amounts: bigint[];
+  receiveTokens: string[];
+  allocations: bigint[];
+};
+
+export type MultiswapBetaQuoteResult = {
+  isValid: boolean;
+  receiveAmounts: bigint[];
+  feeAmount: bigint;
+  errors: string[];
+};
 
 const ONE = BigInt(1e18);
 
-const validationCheck = (pool: PoolState, inputs: MultiswapQuoteInputs) => {
-  let result: MultiswapQuoteResult = {
+const validationCheck = (pool: PoolState, inputs: MultiswapBetaQuoteInputs) => {
+  let result: MultiswapBetaQuoteResult = {
     isValid: true,
     receiveAmounts: [],
     feeAmount: 0n,
@@ -71,7 +81,7 @@ const validationCheck = (pool: PoolState, inputs: MultiswapQuoteInputs) => {
   return result;
 };
 
-export function multiswapQuote(
+export function multiswapBetaQuote(
   pool: PoolState,
   inputs: {
     payTokens: string[];
@@ -88,7 +98,7 @@ export function multiswapQuote(
     const asset = pool.assets[token];
     return amount / asset.conversion;
   });
-  const result: MultiswapQuoteResult = validationCheck(pool, {
+  const result: MultiswapBetaQuoteResult = validationCheck(pool, {
     ...inputs,
     amounts,
   });

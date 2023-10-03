@@ -29,20 +29,6 @@ export type PoolStateMap = {
   [address: Address]: PoolState;
 };
 
-export type MultiswapQuoteInputs = {
-  payTokens: string[];
-  amounts: bigint[];
-  receiveTokens: string[];
-  allocations: bigint[];
-};
-
-export type MultiswapQuoteResult = {
-  isValid: boolean;
-  receiveAmounts: bigint[];
-  feeAmount: bigint;
-  errors: string[];
-};
-
 export type CavalReMultiswapData = {
   // TODO: CavalReMultiswapData is the dex data that is
   // returned by the API that can be used for
