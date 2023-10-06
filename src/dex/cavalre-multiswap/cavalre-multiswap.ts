@@ -100,6 +100,19 @@ export class CavalReMultiswap
     return pools.map(address => `${this.dexKey}_${address}`);
   }
 
+  // export type ExchangePrices<T> = PoolPrices<T>[];
+
+  // export type PoolPrices<T> = {
+  //   prices: bigint[];
+  //   unit: bigint;
+  //   data: T;
+  //   poolIdentifier?: string;
+  //   exchange: string;
+  //   gasCost: number | number[];
+  //   gasCostL2?: number | number[];
+  //   poolAddresses?: Array<Address>;
+  // };
+
   // Returns pool prices for amounts.
   // If limitPools is defined only pools in limitPools
   // should be used. If limitPools is undefined then
@@ -112,6 +125,8 @@ export class CavalReMultiswap
     blockNumber: number,
     limitPools?: string[],
   ): Promise<null | ExchangePrices<CavalReMultiswapData>> {
+    const poolState = this.eventPools.getState(blockNumber);
+
     // TODO: complete me!
     return null;
   }
