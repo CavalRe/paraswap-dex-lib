@@ -14,23 +14,29 @@ import * as CALLDATA_GAS_COST from '../../calldata-gas-cost';
 import { getDexKeysWithNetwork } from '../../utils';
 import { IDex } from '../../dex/idex';
 import { IDexHelper } from '../../dex-helper/idex-helper';
-import { CavalReMultiswapData } from './types';
+import { CavalReMultiswapData, CavalrePoolType, DexParams } from './types';
 import { SimpleExchange } from '../simple-exchange';
 import { CavalReMultiswapConfig, Adapters } from './config';
 import { CavalReMultiswapEventPool } from './cavalre-multiswap-pool';
-import PoolABI from '../../abi/cavalre-multiswap/cavalre-multiswap-beta.json';
+import BetaPoolABI from '../../abi/cavalre-multiswap/cavalre-multiswap-beta.json';
+import { BetaCavalReMultiswapEventPool } from './pools/beta/beta-pool';
 
+//For when there are multiple pool types can just add more here
+export type CavalReMultiswapEventPools = BetaCavalReMultiswapEventPool;
 export class CavalReMultiswap
   extends SimpleExchange
   implements IDex<CavalReMultiswapData>
 {
-  protected eventPools: CavalReMultiswapEventPool;
-
+  protected eventPools: {
+    [key: Address]: CavalReMultiswapEventPools;
+  } = {};
+  protected dexParams: DexParams;
+  protected config: any;
   readonly hasConstantPriceLargeAmounts = false;
   readonly needWrapNative = true;
   readonly isFeeOnTransferSupported = false;
 
-  static readonly poolInterface = new Interface(PoolABI);
+  static readonly betaPoolInterface = new Interface(BetaPoolABI);
 
   public static dexKeysWithNetwork: { key: string; networks: Network[] }[] =
     getDexKeysWithNetwork(CavalReMultiswapConfig);
@@ -41,22 +47,44 @@ export class CavalReMultiswap
     readonly network: Network,
     readonly dexKey: string,
     readonly dexHelper: IDexHelper,
-    public poolAddress: Address,
     protected adapters = Adapters[network] || {}, // TODO: add any additional optional params to support other fork DEXes
   ) {
     super(dexHelper, dexKey);
     this.logger = dexHelper.getLogger(dexKey);
-    this.eventPools = new CavalReMultiswapEventPool(
-      dexKey,
-      network,
-      poolAddress,
-      dexHelper,
-      this.logger,
-    );
+    this.dexParams = CavalReMultiswapConfig[dexKey][network];
+    this.createEventPools();
   }
-
+  /**
+   * Create event pools for each pool type
+   */
+  createEventPools(): void {
+    //const poolAddresses = this.dexParams.poolAddresses;
+    this.eventPools = this.dexParams.pools.reduce((acc, pool) => {
+      switch (pool.type) {
+        case CavalrePoolType.BETA:
+          acc[pool.address] = new BetaCavalReMultiswapEventPool(
+            this.dexKey,
+            this.network,
+            pool.address,
+            this.dexHelper,
+            this.logger,
+            CavalReMultiswap.betaPoolInterface,
+          );
+          break;
+        default:
+          break;
+      }
+      return acc;
+    }, {} as { [key: Address]: CavalReMultiswapEventPools });
+  }
+  async init(blockNumber: number) {
+    if (!this.config) return;
+  }
   async setupEventPools(blockNumber: number) {
-    await this.eventPools.initialize(blockNumber);
+    for (const eventPool of Object.values(this.eventPools)) {
+      await eventPool.initialize(blockNumber);
+    }
+    //await this.eventPools.initialize(blockNumber);
   }
 
   // Initialize pricing is called once in the start of
@@ -74,7 +102,7 @@ export class CavalReMultiswap
   }
 
   getPoolsWithTokenPair(srcToken: Token, destToken: Token): Address[] {
-    const poolStateMap = this.eventPools.pools;
+    const poolStateMap = this.eventPools.pools; //need to change things.
     const pools = Object.values(poolStateMap)
       .filter(poolState => {
         return (
@@ -125,7 +153,7 @@ export class CavalReMultiswap
     blockNumber: number,
     limitPools?: string[],
   ): Promise<null | ExchangePrices<CavalReMultiswapData>> {
-    const poolState = this.eventPools.getState(blockNumber);
+    //const poolState = this.eventPools.getState(blockNumber);
 
     // TODO: complete me!
     return null;
@@ -158,6 +186,23 @@ export class CavalReMultiswap
       networkFee: '0',
     };
   }
+  async getCavalReMultiswapParam(
+    srcToken: string,
+    destToken: string,
+    srcAmount: string,
+    destAmount: string,
+    data: CavalReMultiswapData, //dont know if this is right.
+    side: SwapSide,
+  ): Promise<AdapterExchangeParam> {
+    const { exchange } = data;
+    const payload = '';
+
+    return {
+      targetExchange: exchange,
+      payload,
+      networkFee: '0',
+    };
+  }
 
   // Encode call data used by simpleSwap like routers
   // Used for simpleSwap & simpleBuy
@@ -173,14 +218,13 @@ export class CavalReMultiswap
   ): Promise<SimpleExchangeParam> {
     // TODO: complete me!
     const { exchange } = data;
-
+    //TODO: need to change this to the correct interface.
+    //Use the getCavalReMultiswapParam once its built to find which pool to use for simple swap.
     // Encode here the transaction arguments
-    const swapData = CavalReMultiswap.poolInterface.encodeFunctionData('swap', [
-      srcToken,
-      destToken,
-      srcAmount,
-      0n,
-    ]);
+    const swapData = CavalReMultiswap.betaPoolInterface.encodeFunctionData(
+      'swap',
+      [srcToken, destToken, srcAmount, 0n],
+    );
 
     return this.buildSimpleParamWithoutWETHConversion(
       srcToken,

@@ -1,24 +1,21 @@
 import { Interface } from '@ethersproject/abi';
 import { DeepReadonly } from 'ts-essentials';
-import { Log, Logger } from '../../types';
-import { catchParseLogError } from '../../utils';
-import { StatefulEventSubscriber } from '../../stateful-event-subscriber';
-import { IDexHelper } from '../../dex-helper/idex-helper';
-import { PoolState, PoolStateMap } from './types';
-import { Address } from '../../types';
-import _ from 'lodash';
+import { Log, Logger } from '../../../../types';
+import { catchParseLogError } from '../../../../utils';
+import { StatefulEventSubscriber } from '../../../../stateful-event-subscriber';
+import { IDexHelper } from '../../../../dex-helper/idex-helper';
+import { PoolState, PoolStateMap } from '../.././types';
+import { Address } from '../../../../types';
+import { typecastReadOnly } from '../../utils';
+import BetaPoolABI from '../../../../abi/cavalre-multiswap/cavalre-multiswap-beta.json';
 
-const ONE = BigInt(10 ** 18);
-function typecastReadOnlyPoolState(pool: DeepReadonly<PoolState>): PoolState {
-  return _.cloneDeep(pool) as PoolState;
-}
-export class CavalReMultiswapEventPool extends StatefulEventSubscriber<PoolStateMap> {
+export class BetaCavalReMultiswapEventPool extends StatefulEventSubscriber<PoolState> {
   handlers: {
     [event: string]: (
       event: any,
       state: PoolState,
       log: Readonly<Log>,
-    ) => PoolState; //| null;
+    ) => PoolState /* | null; */;
   } = {};
 
   //pools: PoolStateMap = {};
@@ -33,18 +30,15 @@ export class CavalReMultiswapEventPool extends StatefulEventSubscriber<PoolState
     public poolAddress: Address,
     protected dexHelper: IDexHelper,
     logger: Logger,
-    protected cavalreMultiswapIface = new Interface(
-      '' /* TODO: Import and put here CavalreMultiswap ABI */,
-    ), // TODO: add any additional params required for event subscriber
+    protected betaCavalreMultiswapIface = new Interface(BetaPoolABI), // TODO: add any additional params required for event subscriber
   ) {
     // TODO: Add pool name
-    super(parentName, 'POOL_NAME', dexHelper, logger);
+    super(parentName, 'Beta', dexHelper, logger);
 
     // TODO: make logDecoder decode logs that
-    this.logDecoder = (log: Log) => this.cavalreMultiswapIface.parseLog(log);
-    this.addressesSubscribed = [
-      /* subscribed addresses */
-    ];
+    this.logDecoder = (log: Log) =>
+      this.betaCavalreMultiswapIface.parseLog(log);
+    this.addressesSubscribed = [poolAddress];
 
     // Add handlers
     //this.handlers['myEvent'] = this.handleMyEvent.bind(this);
@@ -60,30 +54,20 @@ export class CavalReMultiswapEventPool extends StatefulEventSubscriber<PoolState
    * @returns Updates state of the event subscriber after the log
    */
   protected processLog(
-    state: DeepReadonly<PoolStateMap>,
+    state: DeepReadonly<PoolState>,
     log: Readonly<Log>,
-  ): DeepReadonly<PoolStateMap> | null {
-    const _state: PoolStateMap = {};
-    for (const [address, pool] of Object.entries(state))
-      _state[address] = typecastReadOnlyPoolState(pool);
-
+  ): DeepReadonly<PoolState> | null {
+    let _state: PoolState = typecastReadOnly<PoolState>(state);
     try {
       const event = this.logDecoder(log);
       if (event.name in this.handlers) {
-        const poolAddress = event.args.poolId.slice(0, 42).toLowerCase();
-        if (poolAddress in _state) {
-          _state[poolAddress] = this.handlers[event.name](
-            event,
-            _state[poolAddress],
-            log,
-          );
-        }
-        //return this.handlers[event.name](event, state, log);
+        _state = this.handlers[event.name](event, _state, log);
       }
+      return _state;
+      //return this.handlers[event.name](event, state, log);
     } catch (e) {
       catchParseLogError(e, this.logger);
     }
-
     return null;
   }
 
@@ -101,13 +85,11 @@ export class CavalReMultiswapEventPool extends StatefulEventSubscriber<PoolState
    * should be generated
    * @returns state of the event subscriber at blocknumber
    */
-  async generateState(
-    blockNumber: number,
-  ): Promise<DeepReadonly<PoolStateMap>> {
+  async generateState(blockNumber: number): Promise<DeepReadonly<PoolState>> {
     const pools = await this.fetchPools();
     //this.pools = pools;
     //const poolState = pools[this.poolAddress.toLowerCase() as Address];
-    return pools;
+    return {} as PoolState; //pools;
   }
 
   // Its just a dummy example

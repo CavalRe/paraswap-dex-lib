@@ -28,7 +28,9 @@ export interface PoolState extends TokenState {
 export type PoolStateMap = {
   [address: Address]: PoolState;
 };
-
+export enum CavalrePoolType {
+  BETA = 'Beta',
+}
 export type CavalReMultiswapData = {
   // TODO: CavalReMultiswapData is the dex data that is
   // returned by the API that can be used for
@@ -36,7 +38,25 @@ export type CavalReMultiswapData = {
   // Complete me!
   exchange: Address;
 };
-
+export type CavalReBetaPoolConfigInfo = {
+  poolAddress: Address;
+  tokenAddresses: Address[];
+  tokens: {
+    [tokenAddress: string]: {
+      tokenSymbol: string;
+      tokenDecimals: number;
+      assetAddress: Address;
+    };
+  };
+};
+export type CavalReMultiswapConfigInfo = {
+  poolAddresses: Address[];
+  pools: {};
+};
 export type DexParams = {
-  pools: PoolStateMap;
+  pools: {
+    address: Address;
+    name: string;
+    type: CavalrePoolType;
+  }[];
 };
