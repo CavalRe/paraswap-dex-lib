@@ -20,6 +20,7 @@ import { CavalReMultiswapConfig, Adapters } from './config';
 import { CavalReMultiswapEventPool } from './cavalre-multiswap-pool';
 import BetaPoolABI from '../../abi/cavalre-multiswap/cavalre-multiswap-beta.json';
 import { BetaCavalReMultiswapEventPool } from './pools/beta/beta-pool';
+import { Config } from '../aave-v3/config';
 
 //For when there are multiple pool types can just add more here
 export type CavalReMultiswapEventPools = BetaCavalReMultiswapEventPool;
@@ -30,6 +31,7 @@ export class CavalReMultiswap
   protected eventPools: {
     [key: Address]: CavalReMultiswapEventPools;
   } = {};
+  protected poolsLiquidityUsd: { [key: string]: number } = {};
   protected dexParams: DexParams;
   protected config: any;
   readonly hasConstantPriceLargeAmounts = false;
@@ -102,15 +104,12 @@ export class CavalReMultiswap
   }
 
   getPoolsWithTokenPair(srcToken: Token, destToken: Token): Address[] {
-    const poolStateMap = this.eventPools.pools; //need to change things.
-    const pools = Object.values(poolStateMap)
-      .filter(poolState => {
-        return (
-          !!poolState.assets[srcToken.address.toLowerCase() as Address] &&
-          !!poolState.assets[destToken.address.toLowerCase() as Address]
-        );
-      })
-      .map(poolState => poolState.address) as Address[];
+    //const poolStateMap = this.eventPools.pools; //need to change things.
+    const pools = Object.entries(this.eventPools)
+      .filter(([, pool]) =>
+        pool.checkTokenSwapSupport(srcToken.address, destToken.address),
+      )
+      .map(([poolAddress]) => poolAddress) as Address[];
     return pools;
   }
 
@@ -242,7 +241,9 @@ export class CavalReMultiswap
   // getTopPoolsForToken. It is optional for a DEX
   // to implement this
   async updatePoolState(): Promise<void> {
-    // TODO: complete me!
+    Object.values(this.eventPools).forEach(eventPool => {});
+    //TODO: I think this should calculate the USD value of the pools liquidity
+    // and store it in this.poolsLiquidityUsd
   }
 
   // Returns list of top pools based on liquidity. Max
@@ -252,6 +253,7 @@ export class CavalReMultiswap
     limit: number,
   ): Promise<PoolLiquidity[]> {
     //TODO: complete me!
+    // I think this should return the top pools based on liquidity USD value
     return [];
   }
 }

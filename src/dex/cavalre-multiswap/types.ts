@@ -22,7 +22,7 @@ export type AssetStateMap = {
 
 export interface PoolState extends TokenState {
   assets: AssetStateMap;
-  addresses: Address[];
+  assetsAddresses: Address[];
 }
 
 export type PoolStateMap = {
@@ -41,11 +41,11 @@ export type CavalReMultiswapData = {
 export type CavalReBetaPoolConfigInfo = {
   poolAddress: Address;
   tokenAddresses: Address[];
+  //singleSwapPairs: {[key: `${Address}-${Address}`]: Address[]};
   tokens: {
-    [tokenAddress: string]: {
+    [tokenAddress: Address]: {
       tokenSymbol: string;
       tokenDecimals: number;
-      assetAddress: Address;
     };
   };
 };

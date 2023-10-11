@@ -4,7 +4,13 @@ import { Log, Logger } from '../../../../types';
 import { catchParseLogError } from '../../../../utils';
 import { StatefulEventSubscriber } from '../../../../stateful-event-subscriber';
 import { IDexHelper } from '../../../../dex-helper/idex-helper';
-import { PoolState, PoolStateMap } from '../.././types';
+import {
+  AssetStateMap,
+  CavalReBetaPoolConfigInfo,
+  PoolState,
+  PoolStateMap,
+  TokenState,
+} from '../.././types';
 import { Address } from '../../../../types';
 import { typecastReadOnly } from '../../utils';
 import BetaPoolABI from '../../../../abi/cavalre-multiswap/cavalre-multiswap-beta.json';
@@ -15,11 +21,11 @@ export class BetaCavalReMultiswapEventPool extends StatefulEventSubscriber<PoolS
       event: any,
       state: PoolState,
       log: Readonly<Log>,
-    ) => PoolState /* | null; */;
+    ) => PoolState;
   } = {};
 
   //pools: PoolStateMap = {};
-
+  protected config?: CavalReBetaPoolConfigInfo;
   logDecoder: (log: Log) => any;
 
   addressesSubscribed: string[];
@@ -39,9 +45,13 @@ export class BetaCavalReMultiswapEventPool extends StatefulEventSubscriber<PoolS
     this.logDecoder = (log: Log) =>
       this.betaCavalreMultiswapIface.parseLog(log);
     this.addressesSubscribed = [poolAddress];
-
-    // Add handlers
-    //this.handlers['myEvent'] = this.handleMyEvent.bind(this);
+    this.handlers['Swap'] = this.handleSwap.bind(this);
+    this.handlers['AddLiquidity'] = this.handleAddLiquidity.bind(this);
+    this.handlers['RemoveLiquidity'] = this.handleRemoveLiquidity.bind(this);
+    this.handlers['BalanceUpdate'] = this.handleBalanceUpdate.bind(this);
+    this.handlers['DistributeFee'] = this.handleDistributeFee.bind(this);
+    this.handlers['Multiswap'] = this.handleMultiswap.bind(this);
+    this.handlers['Stake'] = this.handleStake.bind(this);
   }
 
   /**
@@ -86,18 +96,409 @@ export class BetaCavalReMultiswapEventPool extends StatefulEventSubscriber<PoolS
    * @returns state of the event subscriber at blocknumber
    */
   async generateState(blockNumber: number): Promise<DeepReadonly<PoolState>> {
-    const pools = await this.fetchPools();
+    //const pools = await this.fetchPools();
+    let multiCallData = [
+      {
+        target: this.poolAddress,
+        callData: this.betaCavalreMultiswapIface.encodeFunctionData('info', []),
+      },
+      {
+        target: this.poolAddress,
+        callData: this.betaCavalreMultiswapIface.encodeFunctionData(
+          'assets',
+          [],
+        ),
+      },
+    ];
+    const returnData = (
+      await this.dexHelper.multiContract.methods
+        .aggregate(multiCallData)
+        .call({}, blockNumber)
+    ).returnData;
+    const poolInfoRes = this.betaCavalreMultiswapIface.decodeFunctionResult(
+      'info',
+      returnData[0],
+    )[0];
+    const assetsRes = this.betaCavalreMultiswapIface.decodeFunctionResult(
+      'assets',
+      returnData[1],
+    )[0];
+    const poolInfo: TokenState = {
+      address: poolInfoRes.token,
+      name: poolInfoRes.name,
+      symbol: poolInfoRes.symbol,
+      decimals: poolInfoRes.decimals,
+      balance: BigInt(poolInfoRes.balance.toString()),
+      conversion: BigInt(1),
+      weight: BigInt(1e18),
+      fee: BigInt(0),
+      scale: BigInt(poolInfoRes.scale.toString()),
+    };
+    const assets = assetsRes.reduce((acc: any, asset: any) => {
+      acc[asset.token] = {
+        address: asset.token,
+        name: asset.name,
+        symbol: asset.symbol,
+        decimals: asset.decimals,
+        conversion: BigInt(asset.conversion.toString()),
+        balance: BigInt(asset.balance.toString()),
+        fee: BigInt(asset.fee.toString()),
+        scale: BigInt(asset.scale.toString()),
+        weight:
+          (BigInt(asset.scale.toString()) * BigInt(1e18)) / poolInfo.scale,
+      } as TokenState;
+      return acc;
+    }, {} as AssetStateMap);
+    const assetsAddresses = assetsRes.map((asset: any) => asset.token);
+    const poolState: PoolState = {
+      ...poolInfo,
+      assets,
+      assetsAddresses,
+    };
+    this.config = {
+      poolAddress: this.poolAddress,
+      tokenAddresses: assetsAddresses,
+      tokens: assets,
+    };
+
     //this.pools = pools;
     //const poolState = pools[this.poolAddress.toLowerCase() as Address];
-    return {} as PoolState; //pools;
+    return poolState;
   }
-
-  // Its just a dummy example
-  handleMyEvent(
+  getConfig(): CavalReBetaPoolConfigInfo | undefined {
+    return this.config;
+  }
+  checkTokenSwapSupport(srcToken: Address, destToken: Address): boolean {
+    return (
+      !!this.config &&
+      this.config.tokenAddresses.includes(srcToken) &&
+      this.config.tokenAddresses.includes(destToken)
+    );
+  }
+  handleSwap(
     event: any,
     state: DeepReadonly<PoolState>,
     log: Readonly<Log>,
-  ): DeepReadonly<PoolState> | null {
-    return null;
+  ): PoolState {
+    /* 
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "txCount",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "payToken",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "receiveToken",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "payAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "receiveAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "feeAmount",
+        "type": "uint256"
+      }
+    ],
+    */
+
+    return { ...state } as PoolState;
+  }
+  handleAddLiquidity(
+    event: any,
+    state: DeepReadonly<PoolState>,
+    log: Readonly<Log>,
+  ): PoolState {
+    /*
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "txCount",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256[]",
+        "name": "payAmounts",
+        "type": "uint256[]"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "receiveAmount",
+        "type": "uint256"
+      }
+    ],
+     */
+    const assets = state.assetsAddresses.reduce((acc, address, i) => {
+      const assetState = state.assets[address];
+      const assetBal = assetState.balance + BigInt(event.args.payAmounts[i]);
+      acc[address] = { ...assetState, balance: assetBal };
+      return acc;
+    }, {} as AssetStateMap);
+    const poolBal = state.balance + BigInt(event.args.receiveAmount.toString());
+
+    return { ...state, balance: poolBal, assets } as PoolState;
+  }
+  handleRemoveLiquidity(
+    event: any,
+    state: DeepReadonly<PoolState>,
+    log: Readonly<Log>,
+  ): PoolState {
+    /* 
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "txCount",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "payAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256[]",
+        "name": "receiveAmounts",
+        "type": "uint256[]"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "feeAmount",
+        "type": "uint256"
+      }
+    ],
+    */
+    const lpAmountBurned = BigInt(event.args.payAmount.toString());
+    const poolBal = state.balance - lpAmountBurned;
+
+    return { ...state } as PoolState;
+  }
+  handleBalanceUpdate(
+    event: any,
+    state: DeepReadonly<PoolState>,
+    log: Readonly<Log>,
+  ): PoolState {
+    /* 
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "txCount",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "balance",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "meanBalance",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "userBalance",
+        "type": "uint256"
+      }
+    ],
+    */
+    const assetAddress = event.args.token.toLowerCase() as Address;
+    const assetBal = BigInt(event.args.balance.toString());
+    const newAssetState = {
+      ...state.assets[assetAddress],
+      balance: assetBal,
+    };
+    return {
+      ...state,
+      assets: { ...state.assets, [assetAddress]: newAssetState },
+    } as PoolState;
+  }
+  handleDistributeFee(
+    event: any,
+    state: DeepReadonly<PoolState>,
+    log: Readonly<Log>,
+  ): PoolState {
+    /* 
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "lpAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "protocolAmount",
+        "type": "uint256"
+      }
+    ],
+    */
+    return { ...state } as PoolState;
+  }
+
+  handleMultiswap(
+    event: any,
+    state: DeepReadonly<PoolState>,
+    log: Readonly<Log>,
+  ): PoolState {
+    /* 
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "txCount",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address[]",
+        "name": "payTokens",
+        "type": "address[]"
+      },
+      {
+        "indexed": false,
+        "internalType": "address[]",
+        "name": "receiveTokens",
+        "type": "address[]"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256[]",
+        "name": "payAmounts",
+        "type": "uint256[]"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256[]",
+        "name": "receiveAmounts",
+        "type": "uint256[]"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "feeAmount",
+        "type": "uint256"
+      }
+    ],
+    */
+
+    return { ...state } as PoolState;
+  }
+
+  handleStake(
+    event: any,
+    state: DeepReadonly<PoolState>,
+    log: Readonly<Log>,
+  ): PoolState {
+    /* 
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "txCount",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "payToken",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "payAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "receiveAmount",
+        "type": "uint256"
+      }
+    ],
+    */
+    const tokenAddress = event.args.payToken.toLowerCase() as Address;
+    const poolBal = state.balance + BigInt(event.args.receiveAmount.toString());
+    const assetBal =
+      state.assets[tokenAddress].balance +
+      BigInt(event.args.payAmount.toString());
+    return {
+      ...state,
+      balance: poolBal,
+      assets: {
+        ...state.assets,
+        [tokenAddress]: {
+          ...state.assets[tokenAddress],
+          balance: assetBal,
+        },
+      },
+    } as PoolState;
   }
 }
