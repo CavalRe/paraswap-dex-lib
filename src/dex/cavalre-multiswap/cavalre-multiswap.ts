@@ -112,7 +112,16 @@ export class CavalReMultiswap
       .map(([poolAddress]) => poolAddress) as Address[];
     return pools;
   }
-
+  getPoolsWithToken(srcToken: Address): Address[] {
+    //const poolStateMap = this.eventPools.pools; //need to change things.
+    const pools = Object.entries(this.eventPools)
+      .filter(([, pool]) => pool.checkTokenSupport(srcToken))
+      .map(([poolAddress]) => poolAddress) as Address[];
+    return pools;
+  }
+  protected getPoolIdentifier(poolAddress: Address): string {
+    return `${this.dexKey}_${poolAddress}`;
+  }
   // Returns list of pool identifiers that can be used
   // for a given swap. poolIdentifiers must be unique
   // across DEXes. It is recommended to use
@@ -124,7 +133,7 @@ export class CavalReMultiswap
     blockNumber: number,
   ): Promise<string[]> {
     const pools = this.getPoolsWithTokenPair(srcToken, destToken);
-    return pools.map(address => `${this.dexKey}_${address}`);
+    return pools.map(address => this.getPoolIdentifier(address));
   }
 
   // export type ExchangePrices<T> = PoolPrices<T>[];
@@ -152,10 +161,38 @@ export class CavalReMultiswap
     blockNumber: number,
     limitPools?: string[],
   ): Promise<null | ExchangePrices<CavalReMultiswapData>> {
-    //const poolState = this.eventPools.getState(blockNumber);
-
-    // TODO: complete me!
-    return null;
+    if (Object.keys(this.eventPools).length === 0) {
+      this.logger.error(
+        `Missing event pools for ${this.dexKey} in getPricesVolume`,
+      );
+      return null;
+    }
+    const srcTokenAddress = this.dexHelper.config
+      .wrapETH(srcToken)
+      .address.toLowerCase();
+    const destTokenAddress = this.dexHelper.config
+      .wrapETH(destToken)
+      .address.toLowerCase();
+    if (srcTokenAddress === destTokenAddress) return null;
+    const pools = this.getPoolsWithTokenPair(srcToken, destToken);
+    if (pools.length === 0) return null;
+    const poolPrices: PoolPrices<CavalReMultiswapData>[] = [];
+    for (const poolAddress of pools) {
+      const pool = this.eventPools[poolAddress];
+      const poolIdentifier = this.getPoolIdentifier(poolAddress);
+      const poolPricesForAmounts = await pool.getPricesVolume(
+        srcToken,
+        destToken,
+        amounts,
+        side,
+        blockNumber,
+        poolIdentifier,
+      );
+      if (poolPricesForAmounts) {
+        poolPrices.push(poolPricesForAmounts);
+      }
+    }
+    return poolPrices;
   }
 
   // Returns estimated gas cost of calldata for this DEX in multiSwap
@@ -241,9 +278,16 @@ export class CavalReMultiswap
   // getTopPoolsForToken. It is optional for a DEX
   // to implement this
   async updatePoolState(): Promise<void> {
-    Object.values(this.eventPools).forEach(eventPool => {});
-    //TODO: I think this should calculate the USD value of the pools liquidity
-    // and store it in this.poolsLiquidityUsd
+    const poolsLiquidityUsd: { [key: string]: number } = {};
+    const poolLiquidityProms = Object.values(this.eventPools).map(eventPool =>
+      eventPool.getPoolLiquidityUSD(),
+    );
+    const poolLiquidity = await Promise.all(poolLiquidityProms);
+
+    Object.values(this.eventPools).forEach((eventPool, index) => {
+      poolsLiquidityUsd[eventPool.poolAddress] = poolLiquidity[index];
+    });
+    this.poolsLiquidityUsd = poolsLiquidityUsd;
   }
 
   // Returns list of top pools based on liquidity. Max
@@ -252,8 +296,13 @@ export class CavalReMultiswap
     tokenAddress: Address,
     limit: number,
   ): Promise<PoolLiquidity[]> {
-    //TODO: complete me!
-    // I think this should return the top pools based on liquidity USD value
-    return [];
+    const pools = this.getPoolsWithToken(tokenAddress);
+    const poolsLiquidity = pools.map(poolAddress => ({
+      exchange: this.dexKey,
+      address: poolAddress,
+      connectorTokens: [] as Token[], //TODO get all tokens in pool and add them here.
+      liquidityUSD: this.poolsLiquidityUsd[poolAddress],
+    }));
+    return poolsLiquidity;
   }
 }

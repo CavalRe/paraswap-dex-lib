@@ -90,14 +90,14 @@ export function multiswapBetaQuote(
     allocations: bigint[];
   },
 ) {
-  const { payTokens, amounts: ogAmounts, receiveTokens, allocations } = inputs;
+  const { payTokens, amounts, receiveTokens, allocations } = inputs;
   //convertAmounts to use asset.conversion
-  const amounts = ogAmounts.map((amount, i) => {
+  /* const amounts = ogAmounts.map((amount, i) => {
     const token = payTokens[i];
     if (token === pool.address) return amount;
     const asset = pool.assets[token];
     return amount / asset.conversion;
-  });
+  }); */
   const result: MultiswapBetaQuoteResult = validationCheck(pool, {
     ...inputs,
     amounts,
@@ -174,12 +174,12 @@ export function multiswapBetaQuote(
     }
   }
 
-  result.receiveAmounts = receiveAmounts.map((amount, i) => {
+  result.receiveAmounts = receiveAmounts; /* .map((amount, i) => {
     const token = receiveTokens[i];
     if (token === pool.address) return amount;
     const asset = pool.assets[token];
     return amount * asset.conversion;
-  });
+  }); */
   result.feeAmount = feeAmount;
   return result;
 }

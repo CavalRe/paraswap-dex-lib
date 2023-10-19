@@ -4,10 +4,16 @@ dotenv.config();
 
 import { CavalReMultiswapEventPool } from './cavalre-multiswap-pool';
 import { Network } from '../../constants';
-import { Address } from '../../types';
+import { Address, Logger } from '../../types';
 import { DummyDexHelper } from '../../dex-helper/index';
 import { testEventSubscriber } from '../../../tests/utils-events';
-import { PoolState } from './types';
+import { CavalrePoolType, DexParams, PoolState } from './types';
+import { CavalReMultiswapConfig } from './config';
+import {
+  CavalReMultiswap,
+  CavalReMultiswapEventPools,
+} from './cavalre-multiswap';
+import { BetaCavalReMultiswapEventPool } from './pools/beta/beta-pool';
 
 /*
   README
@@ -45,12 +51,15 @@ import { PoolState } from './types';
 jest.setTimeout(50 * 1000);
 
 async function fetchPoolState(
-  cavalreMultiswapPools: CavalReMultiswapEventPool,
+  cavalreMultiswapPools: CavalReMultiswapEventPools,
   blockNumber: number,
   poolAddress: string,
 ): Promise<PoolState> {
-  // TODO: complete me!
-  return {};
+  const state = await cavalreMultiswapPools.generateState(blockNumber);
+  return {
+    ...state,
+    assetsAddresses: [...state.assetsAddresses],
+  };
 }
 
 // eventName -> blockNumbers
@@ -58,34 +67,32 @@ type EventMappings = Record<string, number[]>;
 
 describe('CavalReMultiswap EventPool Mainnet', function () {
   const dexKey = 'CavalReMultiswap';
-  const network = Network.MAINNET;
+  const network = Network.AVALANCHE;
   const dexHelper = new DummyDexHelper(network);
   const logger = dexHelper.getLogger(dexKey);
-  let cavalreMultiswapPool: CavalReMultiswapEventPool;
-
+  let cavalreMultiswapPool: CavalReMultiswapEventPools;
+  const dexParams = CavalReMultiswapConfig[dexKey][network];
   // poolAddress -> EventMappings
   const eventsToTest: Record<Address, EventMappings> = {
     // TODO: complete me!
   };
 
-  beforeEach(async () => {
-    cavalreMultiswapPool = new CavalReMultiswapEventPool(
-      dexKey,
-      network,
-      dexHelper,
-      logger,
-      /* TODO: Put here additional constructor arguments if needed */
-    );
-  });
-
   Object.entries(eventsToTest).forEach(
-    ([poolAddress, events]: [string, EventMappings]) => {
+    ([poolAddress, events]: [string, EventMappings], index) => {
       describe(`Events for ${poolAddress}`, () => {
         Object.entries(events).forEach(
           ([eventName, blockNumbers]: [string, number[]]) => {
             describe(`${eventName}`, () => {
               blockNumbers.forEach((blockNumber: number) => {
                 it(`State after ${blockNumber}`, async function () {
+                  cavalreMultiswapPool = createPool(
+                    dexParams.pools[index],
+                    dexKey,
+                    network,
+                    dexHelper,
+                    logger,
+                  );
+
                   await testEventSubscriber(
                     cavalreMultiswapPool,
                     cavalreMultiswapPool.addressesSubscribed,
@@ -108,3 +115,25 @@ describe('CavalReMultiswap EventPool Mainnet', function () {
     },
   );
 });
+
+const createPool = (
+  pool: DexParams['pools'][0],
+  dexKey: string,
+  network: Network,
+  dexHelper: DummyDexHelper,
+  logger: Logger,
+) => {
+  switch (pool.type) {
+    case CavalrePoolType.BETA:
+      return new BetaCavalReMultiswapEventPool(
+        dexKey,
+        network,
+        pool.address,
+        dexHelper,
+        logger,
+        CavalReMultiswap.betaPoolInterface,
+      );
+    default:
+      throw new Error('Invalid pool type');
+  }
+};
