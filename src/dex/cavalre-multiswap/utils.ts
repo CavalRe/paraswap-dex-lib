@@ -1,5 +1,12 @@
 import { Contract } from 'web3-eth-contract';
 import { TokenState, PoolState } from './types';
+import { DeepReadonly } from 'ts-essentials';
+import _ from 'lodash';
+
+export const ONE = BigInt(10 ** 18);
+export function typecastReadOnly<State>(pool: DeepReadonly<State>): State {
+  return _.cloneDeep(pool) as State;
+}
 
 // export const generatePoolState = async () => {
 //   const assets: TokenState[] = [];

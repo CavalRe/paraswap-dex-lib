@@ -6,18 +6,22 @@ import { StatefulEventSubscriber } from '../../stateful-event-subscriber';
 import { IDexHelper } from '../../dex-helper/idex-helper';
 import { PoolState, PoolStateMap } from './types';
 import { Address } from '../../types';
+import _ from 'lodash';
 
 const ONE = BigInt(10 ** 18);
-export class CavalReMultiswapEventPool extends StatefulEventSubscriber<PoolState> {
+function typecastReadOnlyPoolState(pool: DeepReadonly<PoolState>): PoolState {
+  return _.cloneDeep(pool) as PoolState;
+}
+export class CavalReMultiswapEventPool extends StatefulEventSubscriber<PoolStateMap> {
   handlers: {
     [event: string]: (
       event: any,
-      state: DeepReadonly<PoolState>,
+      state: PoolState,
       log: Readonly<Log>,
-    ) => DeepReadonly<PoolState> | null;
+    ) => PoolState; //| null;
   } = {};
 
-  pools: PoolStateMap = {};
+  //pools: PoolStateMap = {};
 
   logDecoder: (log: Log) => any;
 
@@ -43,7 +47,7 @@ export class CavalReMultiswapEventPool extends StatefulEventSubscriber<PoolState
     ];
 
     // Add handlers
-    this.handlers['myEvent'] = this.handleMyEvent.bind(this);
+    //this.handlers['myEvent'] = this.handleMyEvent.bind(this);
   }
 
   /**
@@ -56,13 +60,25 @@ export class CavalReMultiswapEventPool extends StatefulEventSubscriber<PoolState
    * @returns Updates state of the event subscriber after the log
    */
   protected processLog(
-    state: DeepReadonly<PoolState>,
+    state: DeepReadonly<PoolStateMap>,
     log: Readonly<Log>,
-  ): DeepReadonly<PoolState> | null {
+  ): DeepReadonly<PoolStateMap> | null {
+    const _state: PoolStateMap = {};
+    for (const [address, pool] of Object.entries(state))
+      _state[address] = typecastReadOnlyPoolState(pool);
+
     try {
       const event = this.logDecoder(log);
       if (event.name in this.handlers) {
-        return this.handlers[event.name](event, state, log);
+        const poolAddress = event.args.poolId.slice(0, 42).toLowerCase();
+        if (poolAddress in _state) {
+          _state[poolAddress] = this.handlers[event.name](
+            event,
+            _state[poolAddress],
+            log,
+          );
+        }
+        //return this.handlers[event.name](event, state, log);
       }
     } catch (e) {
       catchParseLogError(e, this.logger);
@@ -85,11 +101,13 @@ export class CavalReMultiswapEventPool extends StatefulEventSubscriber<PoolState
    * should be generated
    * @returns state of the event subscriber at blocknumber
    */
-  async generateState(blockNumber: number): Promise<DeepReadonly<PoolState>> {
+  async generateState(
+    blockNumber: number,
+  ): Promise<DeepReadonly<PoolStateMap>> {
     const pools = await this.fetchPools();
-    this.pools = pools;
-    const poolState = pools[this.poolAddress.toLowerCase() as Address];
-    return poolState;
+    //this.pools = pools;
+    //const poolState = pools[this.poolAddress.toLowerCase() as Address];
+    return pools;
   }
 
   // Its just a dummy example
